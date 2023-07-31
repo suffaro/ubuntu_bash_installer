@@ -1,20 +1,16 @@
-#!/bin/sh
+#!/bin/bash
 
-function execute() {
+execute() {
   sudo $1
   if [ $? -eq 0 ]; then
   echo "[+] Succeded!"
   else
-  
+  echo "[!] Error! Process $1 failed."
   fi 
 };
 
-function logs() {  
+logs() {  
   echo "[process] $1"
-}
-
-function logs() {
-
 }
 
 # update and upgrade 
@@ -23,7 +19,7 @@ sudo apt update && sudo apt upgrade -y
 sleep 1
 echo "Starting app installation..."
 
-APPLIST=( 'unrar', 'git', 'snap', 'libreoffice', 'curl', 'hardinfo')
+APPLIST=("unrar" "git" "snap" "libreoffice" "curl" "hardinfo")
 
 for app in "${APPLIST[@]}"
 do
