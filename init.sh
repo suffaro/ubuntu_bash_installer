@@ -1,56 +1,71 @@
 #!/bin/bash
 
-execute() {
-  sudo $1
-  if [ $? -eq 0 ]; then
-  echo "[+] Succeded!"
-  else
-  echo "[!] Error! Process $1 failed."
-  fi 
-};
+REPOSITORIES=("ppa:qbittorrent-team/qbittorrent-stable")
+APPLICATIONS=("hardinfo" "snap" "perl" "gcc" "qbittorrent" "wget" "libreoffice" "unrar" "vim" "net-tools")
+SNAP_APPLICATIONS=("telegram-desktop" "nodejs???" "code --classic" "discord")
+LINKS=("https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb")
 
-logs() {  
-  echo "[process] $1"
+
+process_track() {
+  while ps -p $1 > /dev/null
+  do
+    progress_bar
+  done
+  echo "Success!!"
 }
 
-# update and upgrade 
-logs "Updating your system..."
-sudo apt update && sudo apt upgrade -y
-sleep 1
-echo "Starting app installation..."
 
-APPLIST=("unrar" "git" "snap" "libreoffice" "curl" "hardinfo")
 
-for app in "${APPLIST[@]}"
+echo "Hi! This script is going to install ubuntu with all needed soft on your laptop.\n Please press enter to launch installation..."
+
+clear
+
+source test.sh
+
+
+interface "Phase 1: Starting installation..." 1
+
+for elem in ${REPOSITORIES[@]}
 do
-  echo "installing $app"
-  commandExec "apt install $app -y"
+  interface "Adding $elem to your repositories..."
+  sleep 5
+  sudo add-apt-repository $elem -y & 1> /dev/null
+  p1=$!
+  process_track $p1
 done
 
-sudo apt update
+interface "Updating repositories..." 1
 
-echo "downloading and installing packages"
+sudo apt update & 1> /dev/null
 
-# chrome, vscode
+p1=$!
+process_track $p1
 
-sudo apt-get install wget gpg
-wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > packages.microsoft.gpg
-sudo install -D -o root -g root -m 644 packages.microsoft.gpg /etc/apt/keyrings/packages.microsoft.gpg
-sudo sh -c 'echo "deb [arch=amd64,arm64,armhf signed-by=/etc/apt/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" > /etc/apt/sources.list.d/vscode.list'
-rm -f packages.microsoft.gpg
+interface "Phase 2: App installation..." 1
+for elem in ${APPLICATIONS[@]}
+do
+  interface "Installing $elem in your system..."
+  sudo apt install $elem -y & 1> /dev/null
+  p1=$!
+  process_track $p1  
+done
 
-sudo apt install apt-transport-https
-sudo apt update
-sudo apt install code # or code-insiders
+interface "Phase 3: Snap applications..." 1
+for elem in ${SNAP_APPLICATIONS[@]}
+do
+  interface "Installing $elem in your system..."
+  sudo snap install $elem & 1> /dev/null
+  p1=$p1
+  process_track $p1
+done
 
 
-# snap telegram
-sudo snap install telegram-desktop
+interface "Chrome installation..."
 
-# powerconfig for wifi
+wget $LINKS[0]
+wait
+sudo dpkg -i google-chrome-stable_current_amd64.deb
+p1=$p1
+process_track $p1
 
-# sudo nano /etc/NetworkManager/conf.d/default-wifi-powersave-on.conf
-sudo systemctl restart NetworkManager
-
-sleep 10
 
