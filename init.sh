@@ -1,7 +1,7 @@
 #!/bin/bash
 
 REPOSITORIES=("ppa:qbittorrent-team/qbittorrent-stable")
-APPLICATIONS=("hardinfo" "snap" "perl" "gcc" "qbittorrent" "wget" "libreoffice" "unrar" "vim" "net-tools")
+APPLICATIONS=("hardinfo" "snap" "perl" "gcc" "qbittorrent" "wget" "libreoffice" "unrar" "vim" "net-tools" "dconf-editor")
 SNAP_APPLICATIONS=("telegram-desktop" "node --classic --channel=latest/edge" "code --classic" "discord")
 LINKS=("https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb")
 
@@ -15,8 +15,9 @@ process_track() {
 }
 
 
-
 echo "Hi! This script is going to install ubuntu with all needed soft on your laptop.\n Please press enter to launch installation..."
+
+read -n 1
 
 clear
 
@@ -24,6 +25,13 @@ source test.sh
 
 
 interface "Phase 1: Starting installation..." 1
+
+{
+  sudo apt-get update && sudo apt-get upgrade -y
+} 1> /dev/null
+
+p1=$!
+process_track $p1
 
 for elem in ${REPOSITORIES[@]}
 do
@@ -68,7 +76,6 @@ done
 
 
 interface "Chrome downloading..." 1
-
 { 
   sudo wget ${LINKS[0]} -O ./gc.deb & 
 } 1> /dev/null
@@ -84,3 +91,25 @@ p1=$p1
 process_track $p1
 
 
+interface "Phase 4: Configuration of system..." 0
+
+#time change for dualboot
+timedatectl set-local-rtc 1
+
+#dock and icons
+gsettings set org.gnome.shell.extensions.dash-to-dock dock-position BOTTOM
+gsettings set org.gnome.shell.extensions.dash-to-dock dash-max-icon-size 24
+gsettings set org.gnome.shell.extensions.dash-to-dock show-mounts false
+gsettings set org.gnome.shell.extensions.dash-to-dock show-trash false
+gsettings set org.gnome.shell.extensions.dash-to-dock dock-fixed false
+
+#terminal (HARDEST PART)
+
+
+
+
+#wifi powerchange
+sudo sed -i "s/3/2" /etc/NetworkManager/conf.d/default-wifi-powersave-on.conf
+
+
+echo "Installation complete!"
