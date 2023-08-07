@@ -77,7 +77,7 @@ done
 
 interface "Chrome downloading..." 1
 { 
-  sudo wget ${LINKS[0]} -O ./gc.deb & 
+  wget ${LINKS[0]} -O ./gc.deb & 
 } 1> /dev/null
 
 p1=$p1
@@ -97,11 +97,7 @@ interface "Phase 4: Configuration of system..." 0
 timedatectl set-local-rtc 1
 
 #dock and icons
-gsettings set org.gnome.shell.extensions.dash-to-dock dock-position BOTTOM
-gsettings set org.gnome.shell.extensions.dash-to-dock dash-max-icon-size 24
-gsettings set org.gnome.shell.extensions.dash-to-dock show-mounts false
-gsettings set org.gnome.shell.extensions.dash-to-dock show-trash false
-gsettings set org.gnome.shell.extensions.dash-to-dock dock-fixed false
+
 
 #terminal (HARDEST PART)
 
@@ -109,7 +105,7 @@ gsettings set org.gnome.shell.extensions.dash-to-dock dock-fixed false
 
 
 #wifi powerchange
-sudo sed -i "s/3/2" /etc/NetworkManager/conf.d/default-wifi-powersave-on.conf
+sudo sed -i "s/3/2/" /etc/NetworkManager/conf.d/default-wifi-powersave-on.conf
 
 
 echo "Installation complete!"
