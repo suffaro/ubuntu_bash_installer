@@ -28,10 +28,10 @@ interface "Phase 1: Starting installation..." 1
 
 {
   sudo apt-get update && sudo apt-get upgrade -y
-} 1> /dev/null
+} &> /dev/null
 
-p1=$!
-process_track $p1
+# p1=$!
+# process_track $p1
 
 for elem in ${REPOSITORIES[@]}
 do
@@ -75,20 +75,35 @@ do
 done
 
 
-interface "Chrome downloading..." 1
-{ 
-  wget ${LINKS[0]} -O ./gc.deb & 
-} 1> /dev/null
+DOWNLOAD_URL="https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb"
+# File name after downloading
+DOWNLOAD_FILE="google-chrome-stable_current_amd64.deb"
 
-p1=$p1
-process_track $p1
+# Download the file using wget
+interface "Downloading $DOWNLOAD_FILE..." 1
+wget "$DOWNLOAD_URL" &> /dev/null
 
-interface "Chrome installation..." 1
-{
-  sudo dpkg -i ./gc.deb &
-} 1> /dev/null
-p1=$p1
-process_track $p1
+# Check if the download was successful
+if [ $? -eq 0 ]; then
+    interface "Download successful." 1
+
+    # Install the downloaded package using dpkg
+    interface "Installing $DOWNLOAD_FILE..." 1
+    sudo dpkg -i "$DOWNLOAD_FILE" &> /dev/null
+
+    # Check if the installation was successful
+    if [ $? -eq 0 ]; then
+        interface "Installation successful." 1
+    else
+        interface "Installation failed." 1
+    fi
+else
+    interface "Download failed." 1
+fi
+
+# Clean up: remove the downloaded file
+interface "Cleaning up..." 1
+rm -f "$DOWNLOAD_FILE"
 
 
 interface "Phase 4: Configuration of system..." 0
@@ -106,6 +121,8 @@ timedatectl set-local-rtc 1
 
 #wifi powerchange
 sudo sed -i "s/3/2/" /etc/NetworkManager/conf.d/default-wifi-powersave-on.conf
+
+sudo systemctl restart NetworkManager
 
 
 echo "Installation complete!"
