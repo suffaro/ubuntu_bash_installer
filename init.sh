@@ -1,128 +1,128 @@
 #!/bin/bash
 
-REPOSITORIES=("ppa:qbittorrent-team/qbittorrent-stable")
-APPLICATIONS=("hardinfo" "snap" "perl" "gcc" "qbittorrent" "wget" "libreoffice" "unrar" "vim" "net-tools" "dconf-editor")
-SNAP_APPLICATIONS=("telegram-desktop" "node --classic --channel=latest/edge" "code --classic" "discord")
-LINKS=("https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb")
+set -e  # Exit immediately if a command exits with a non-zero status
+set -o pipefail  # Ensure pipeline errors are caught
 
-
-process_track() {
-  while ps -p $1 > /dev/null
-  do
-    progress_bar
-  done
-  echo -e "\b+"
+# Function for logging
+log() {
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1" | tee -a install.log
 }
 
+# Function for error handling
+error_handler() {
+    log "Error occurred in line $1"
+    exit 1
+}
 
-echo "Hi! This script is going to install ubuntu with all needed soft on your laptop.\n Please press enter to launch installation..."
+trap 'error_handler $LINENO' ERR
 
-read -n 1
+REPOSITORIES=(
+    "ppa:qbittorrent-team/qbittorrent-stable"
+)
 
-clear
+APPLICATIONS=(
+    "hardinfo" "snap" "perl" "gcc" "qbittorrent" "wget" "libreoffice" 
+    "unrar" "vim" "net-tools" "dconf-editor"
+)
 
-source test.sh
-
-
-interface "Phase 1: Starting installation..." 1
-
-{
-  sudo apt-get update && sudo apt-get upgrade -y
-} &> /dev/null
-
-# p1=$!
-# process_track $p1
-
-for elem in ${REPOSITORIES[@]}
-do
-  interface "Adding $elem to your repositories..." 0
-  {
-  sudo add-apt-repository $elem -y & 
-  } 1> /dev/null
-  p1=$!
-  process_track $p1
-done
-
-interface "Updating repositories..." 0
-
-{
-  sudo apt-get update & 
-} 1> /dev/null
-
-p1=$!
-process_track $p1
-
-interface "Phase 2: App installation..." 1
-for elem in ${APPLICATIONS[@]}
-do
-  interface "Installing $elem in your system..." 0
-  {
-  sudo apt-get install $elem -y & 
-  } 1> /dev/null
-  p1=$!
-  process_track $p1  
-done
-
-interface "Phase 3: Snap applications..." 1
-for ((i = 0; i < ${#SNAP_APPLICATIONS[@]}; i++))
-do
-  interface "Installing ${SNAP_APPLICATIONS[$i]} in your system..." 0
-  {
-  sudo snap install ${SNAP_APPLICATIONS[$i]} & 
-  } 1> /dev/null
-  p1=$p1
-  process_track $p1
-done
-
+SNAP_APPLICATIONS=(
+    "telegram-desktop"
+    "node --classic --channel=latest/edge"
+    "code --classic"
+    "discord"
+)
 
 DOWNLOAD_URL="https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb"
-# File name after downloading
 DOWNLOAD_FILE="google-chrome-stable_current_amd64.deb"
 
-# Download the file using wget
-interface "Downloading $DOWNLOAD_FILE..." 1
-wget "$DOWNLOAD_URL" &> /dev/null
+process_track() {
+    local pid=$1
+    while ps -p $pid > /dev/null; do
+        progress_bar
+    done
+    echo -e "\b+"
+}
 
-# Check if the download was successful
-if [ $? -eq 0 ]; then
-    interface "Download successful." 1
+progress_bar() {
+    local chars=('-' '\' '|' '/')
+    printf "\b${chars[i++%${#chars[@]}]}"
+}
 
-    # Install the downloaded package using dpkg
-    interface "Installing $DOWNLOAD_FILE..." 1
-    sudo dpkg -i "$DOWNLOAD_FILE" &> /dev/null
+add_repositories() {
+    for repo in "${REPOSITORIES[@]}"; do
+        log "Adding $repo to your repositories..."
+        sudo add-apt-repository "$repo" -y &>/dev/null &
+        process_track $!
+    done
+}
 
-    # Check if the installation was successful
-    if [ $? -eq 0 ]; then
-        interface "Installation successful." 1
+install_applications() {
+    for app in "${APPLICATIONS[@]}"; do
+        log "Installing $app in your system..."
+        sudo apt-get install "$app" -y &>/dev/null &
+        process_track $!
+    done
+}
+
+install_snap_applications() {
+    for app in "${SNAP_APPLICATIONS[@]}"; do
+        log "Installing $app via snap..."
+        sudo snap install $app &>/dev/null &
+        process_track $!
+    done
+}
+
+configure_gnome_settings() {
+    log "Configuring GNOME dock settings..."
+    gsettings set org.gnome.shell.extensions.dash-to-dock dock-position BOTTOM
+    gsettings set org.gnome.shell.extensions.dash-to-dock dash-max-icon-size 24
+    gsettings set org.gnome.shell.extensions.dash-to-dock show-mounts false
+    gsettings set org.gnome.shell.extensions.dash-to-dock show-trash false
+    gsettings set org.gnome.shell.extensions.dash-to-dock dock-fixed false
+}
+
+install_chrome() {
+    log "Downloading $DOWNLOAD_FILE..."
+    if wget "$DOWNLOAD_URL" &>/dev/null; then
+        log "Download successful."
+        log "Installing $DOWNLOAD_FILE..."
+        if sudo dpkg -i "$DOWNLOAD_FILE" &>/dev/null; then
+            log "Installation successful."
+        else
+            log "Installation failed."
+            return 1
+        fi
     else
-        interface "Installation failed." 1
+        log "Download failed."
+        return 1
     fi
-else
-    interface "Download failed." 1
-fi
+    log "Cleaning up..."
+    rm -f "$DOWNLOAD_FILE"
+}
 
-# Clean up: remove the downloaded file
-interface "Cleaning up..." 1
-rm -f "$DOWNLOAD_FILE"
+main() {
+    log "Starting installation..."
 
+    sudo apt-get update && sudo apt-get upgrade -y
 
-interface "Phase 4: Configuration of system..." 0
+    add_repositories
+    log "Updating repositories..."
+    sudo apt-get update &>/dev/null &
+    process_track $!
 
-#time change for dualboot
-timedatectl set-local-rtc 1
+    install_applications
+    install_snap_applications
+    install_chrome
 
-#dock and icons
+    log "Configuring system..."
+    timedatectl set-local-rtc 1
+    sudo sed -i "s/3/2/" /etc/NetworkManager/conf.d/default-wifi-powersave-on.conf
+    sudo systemctl restart NetworkManager
 
+    configure_gnome_settings  # Add this line to configure GNOME settings
 
-#terminal (HARDEST PART)
+    log "Installation complete!"
+}
 
-
-
-
-#wifi powerchange
-sudo sed -i "s/3/2/" /etc/NetworkManager/conf.d/default-wifi-powersave-on.conf
-
-sudo systemctl restart NetworkManager
-
-
-echo "Installation complete!"
+# Run the main function
+main
